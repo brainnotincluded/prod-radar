@@ -1,0 +1,1341 @@
+basePath: /api/v1
+definitions:
+  domain.AlertConfig:
+    properties:
+      cooldown_minutes:
+        type: integer
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      notification_channels:
+        items:
+          type: integer
+        type: array
+      project_id:
+        type: string
+      spike_threshold:
+        type: integer
+      spike_window_minutes:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  domain.Brand:
+    properties:
+      catalog_id:
+        type: integer
+      created_at:
+        type: string
+      exclusions:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      keywords:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      project_id:
+        type: string
+      risk_words:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+    type: object
+  domain.BrandCatalog:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      slug:
+        type: string
+      source_url:
+        type: string
+    type: object
+  domain.Event:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      metadata:
+        items:
+          type: integer
+        type: array
+      project_id:
+        type: string
+      source_id:
+        type: string
+      type:
+        type: string
+    type: object
+  domain.Project:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  domain.Source:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      created_at:
+        type: string
+      id:
+        type: string
+      last_error:
+        type: string
+      last_fetched_at:
+        type: string
+      name:
+        type: string
+      project_id:
+        type: string
+      status:
+        $ref: '#/definitions/domain.SourceStatus'
+      type:
+        $ref: '#/definitions/domain.SourceType'
+      updated_at:
+        type: string
+      url:
+        type: string
+    type: object
+  domain.SourceStatus:
+    enum:
+    - active
+    - error
+    - disabled
+    type: string
+    x-enum-varnames:
+    - SourceStatusActive
+    - SourceStatusError
+    - SourceStatusDisabled
+  domain.SourceType:
+    enum:
+    - rss
+    - web
+    - telegram
+    type: string
+    x-enum-varnames:
+    - SourceTypeRSS
+    - SourceTypeWeb
+    - SourceTypeTelegram
+  domain.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handler.AnalyticsSummary:
+    properties:
+      sentiment_counts:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      top_sources:
+        items:
+          $ref: '#/definitions/handler.SourceMentionCount'
+        type: array
+      total_mentions:
+        type: integer
+    type: object
+  handler.HealthResponse:
+    properties:
+      database:
+        type: string
+      nats:
+        type: string
+      redis:
+        type: string
+      status:
+        type: string
+    type: object
+  handler.SourceMentionCount:
+    properties:
+      count:
+        type: integer
+      source_id:
+        type: string
+    type: object
+  handler.createBrandRequest:
+    properties:
+      catalog_id:
+        type: integer
+      exclusions:
+        items:
+          type: string
+        type: array
+      keywords:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      risk_words:
+        items:
+          type: string
+        type: array
+    required:
+    - keywords
+    - name
+    type: object
+  handler.createProjectRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
+  handler.createSourceRequest:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      type:
+        enum:
+        - rss
+        - web
+        - telegram
+        type: string
+      url:
+        type: string
+    required:
+    - name
+    - type
+    - url
+    type: object
+  handler.loginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  handler.refreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  handler.registerRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  handler.updateBrandRequest:
+    properties:
+      catalog_id:
+        type: integer
+      exclusions:
+        items:
+          type: string
+        type: array
+      keywords:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      risk_words:
+        items:
+          type: string
+        type: array
+    required:
+    - keywords
+    - name
+    type: object
+  handler.updateProjectRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
+  handler.updateSourceRequest:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      url:
+        type: string
+    required:
+    - name
+    - url
+    type: object
+  handler.upsertAlertConfigRequest:
+    properties:
+      cooldown_minutes:
+        minimum: 1
+        type: integer
+      enabled:
+        type: boolean
+      notification_channels:
+        items:
+          type: integer
+        type: array
+      spike_threshold:
+        minimum: 1
+        type: integer
+      spike_window_minutes:
+        minimum: 1
+        type: integer
+    required:
+    - cooldown_minutes
+    - enabled
+    - spike_threshold
+    - spike_window_minutes
+    type: object
+  httputil.ErrorResponse:
+    properties:
+      details:
+        type: string
+      error:
+        type: string
+    type: object
+  repo.AlertRow:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      mention_count:
+        type: integer
+      project_id:
+        type: string
+      sent_at:
+        type: string
+      sentiment_summary:
+        items:
+          type: integer
+        type: array
+      status:
+        type: string
+      threshold:
+        type: integer
+      type:
+        type: string
+    type: object
+  repo.MentionRow:
+    properties:
+      author:
+        type: string
+      brand_id:
+        type: string
+      created_at:
+        type: string
+      external_id:
+        type: string
+      id:
+        type: string
+      is_duplicate:
+        type: boolean
+      matched_keywords:
+        items:
+          type: string
+        type: array
+      matched_risk_words:
+        items:
+          type: string
+        type: array
+      project_id:
+        type: string
+      published_at:
+        type: string
+      sentiment_label:
+        type: string
+      sentiment_score:
+        type: number
+      source_id:
+        type: string
+      status:
+        type: string
+      text:
+        type: string
+      title:
+        type: string
+      url:
+        type: string
+    type: object
+  repo.TimelinePoint:
+    properties:
+      bucket:
+        type: string
+      count:
+        type: integer
+      sentiment:
+        type: string
+    type: object
+  service.AuthTokens:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/domain.User'
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Brand reputation monitoring system API
+  title: BrandRadar API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.AuthTokens'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Login
+      tags:
+      - auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.refreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.AuthTokens'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Registration data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/service.AuthTokens'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /brand-catalog:
+    get:
+      parameters:
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List brand catalog
+      tags:
+      - brand-catalog
+  /brand-catalog/search:
+    get:
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - default: 20
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.BrandCatalog'
+            type: array
+      summary: Search brand catalog
+      tags:
+      - brand-catalog
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /projects:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Project'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List user projects
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.createProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Project'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a project
+      tags:
+      - projects
+  /projects/{projectID}:
+    delete:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete project
+      tags:
+      - projects
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Project'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project by ID
+      tags:
+      - projects
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Project data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.updateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Project'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update project
+      tags:
+      - projects
+  /projects/{projectID}/alert-config:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.AlertConfig'
+      security:
+      - BearerAuth: []
+      summary: Get alert configuration
+      tags:
+      - alert-config
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Alert config data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.upsertAlertConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.AlertConfig'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create or update alert configuration
+      tags:
+      - alert-config
+  /projects/{projectID}/alerts:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/repo.AlertRow'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List project alerts
+      tags:
+      - alerts
+  /projects/{projectID}/analytics:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AnalyticsSummary'
+      security:
+      - BearerAuth: []
+      summary: Analytics summary
+      tags:
+      - analytics
+  /projects/{projectID}/analytics/sentiment:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              format: int64
+              type: integer
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sentiment distribution
+      tags:
+      - analytics
+  /projects/{projectID}/analytics/sources:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handler.SourceMentionCount'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Top sources by mention count
+      tags:
+      - analytics
+  /projects/{projectID}/analytics/timeline:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Since (RFC3339)
+        in: query
+        name: since
+        type: string
+      - description: Until (RFC3339)
+        in: query
+        name: until
+        type: string
+      - default: day
+        description: Interval (hour/day)
+        in: query
+        name: interval
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/repo.TimelinePoint'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Mentions timeline
+      tags:
+      - analytics
+  /projects/{projectID}/brand:
+    delete:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete brand
+      tags:
+      - brands
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Brand'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get brand settings for project
+      tags:
+      - brands
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Brand data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.createBrandRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Brand'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create brand for project
+      tags:
+      - brands
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Brand data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.updateBrandRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Brand'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update brand settings
+      tags:
+      - brands
+  /projects/{projectID}/events:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Event'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List project events
+      tags:
+      - events
+  /projects/{projectID}/feed:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Filter by sentiment
+        in: query
+        name: sentiment
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter since (RFC3339)
+        in: query
+        name: since
+        type: string
+      - description: Filter until (RFC3339)
+        in: query
+        name: until
+        type: string
+      - description: Filter by brand ID
+        in: query
+        name: brand_id
+        type: string
+      - description: Filter by source ID
+        in: query
+        name: source_id
+        type: string
+      - description: Text search
+        in: query
+        name: search
+        type: string
+      - description: Filter by risk words
+        in: query
+        name: has_risk
+        type: boolean
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/repo.MentionRow'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List mentions feed
+      tags:
+      - feed
+  /projects/{projectID}/feed/{mentionID}:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Mention ID
+        in: path
+        name: mentionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/repo.MentionRow'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get mention details
+      tags:
+      - feed
+  /projects/{projectID}/feed/{mentionID}/dismiss:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Mention ID
+        in: path
+        name: mentionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Dismiss a mention
+      tags:
+      - feed
+  /projects/{projectID}/feed/{mentionID}/duplicates:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Mention ID
+        in: path
+        name: mentionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/repo.MentionRow'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List mention duplicates
+      tags:
+      - feed
+  /projects/{projectID}/sources:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Source'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List project sources
+      tags:
+      - sources
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Source data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.createSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Source'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a source
+      tags:
+      - sources
+  /projects/{projectID}/sources/{sourceID}:
+    delete:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Source ID
+        in: path
+        name: sourceID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a source
+      tags:
+      - sources
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Source ID
+        in: path
+        name: sourceID
+        required: true
+        type: string
+      - description: Source data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.updateSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Source'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a source
+      tags:
+      - sources
+  /projects/{projectID}/sources/{sourceID}/toggle:
+    post:
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: Source ID
+        in: path
+        name: sourceID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Source'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Toggle source status
+      tags:
+      - sources
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
