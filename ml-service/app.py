@@ -119,11 +119,15 @@ class ModelManager:
 
     def predict_sentiment(self, text: str) -> SentimentResponse:
         result = self.sentiment_pipe(text, top_k=None)
-        return _map_sentiment(result)
+        sentiment = _map_sentiment(result)
+        return _postprocess_sentiment(text, sentiment)
 
     def predict_sentiment_batch(self, texts: list[str]) -> list[SentimentResponse]:
         results = self.sentiment_pipe(texts, top_k=None, batch_size=32)
-        return [_map_sentiment(r) for r in results]
+        return [
+            _postprocess_sentiment(text, _map_sentiment(r))
+            for text, r in zip(texts, results)
+        ]
 
     def embed(self, text: str) -> list[float]:
         return self.embed_batch([text])[0]
@@ -202,6 +206,92 @@ def _map_sentiment(raw_results: list[dict]) -> SentimentResponse:
     best_score = scores[best_label]
 
     return SentimentResponse(label=best_label, score=round(best_score, 4))
+
+
+# ─── Phase 2: Sarcasm / Churn / Emoji Post-Processing ─────────────────
+
+import re
+
+_POSITIVE_WORDS = {
+    "спасибо", "отлично", "отличная", "отличный", "отличное",
+    "прекрасно", "прекрасная", "замечательно", "замечательная",
+    "браво", "молодцы", "супер", "класс", "круто", "классно",
+    "великолепно", "великолепная", "потрясающе", "потрясающая",
+    "шикарно", "шикарная", "обожаю", "люблю", "лучший", "лучшая",
+    "идеально", "безупречно", "так держать", "респект", "топ",
+}
+
+_NEGATIVE_CONTEXT = {
+    "без связи", "не работает", "сломал", "списали", "заблокировали",
+    "проблема", "висит", "лежит", "тормозит", "крашится", "глючит",
+    "ошибка", "комиссию", "комиссия", "штраф", "переплата",
+    "очередь", "ожидание", "не отвечают", "не перезвонили",
+    "не решили", "навязали", "отказали", "сломалось", "часов",
+    "дней", "недель", "месяц", "месяца",
+}
+
+_SARCASM_EMOJIS = {"🙃", "🤡", "💩"}
+_MODERATE_SARCASM_EMOJIS = {"👏", "🔥", "🚀", "🏆", "💪"}
+
+_NEGATIVE_EMOJIS = {"💀", "😤", "😡", "🤬", "😠", "💀", "🙄", "😒"}
+_POSITIVE_EMOJIS = {"❤️", "❤", "😍", "👍", "🎉", "🥰", "💕", "😊"}
+
+_IRONIC_PATTERNS = [
+    r"так\s+держать", r"очень\s+(помогли|выгодно|удобно)",
+    r"ну\s+спасибо", r"всего[\s\-]то",
+    r"как\s+же\s+я\s+(люблю|обожаю)", r"обожаю\s+когда",
+]
+
+_CHURN_PATTERNS = [
+    r"ухожу\s+(в|к|на)", r"перейду\s+(в|к|на)", r"перехожу\s+(в|к|на)",
+    r"закрываю\s+(счёт|счет|карту)", r"достали", r"надоело",
+    r"отключаюсь", r"расторгаю",
+]
+
+
+def _postprocess_sentiment(text: str, sentiment: SentimentResponse) -> SentimentResponse:
+    """Apply rule-based corrections for sarcasm, churn, and emoji patterns."""
+    text_lower = text.lower().strip()
+    label = sentiment.label
+    score = sentiment.score
+
+    # --- Sarcasm detection: positive word + negative context ---
+    has_pos_word = any(w in text_lower for w in _POSITIVE_WORDS)
+    has_neg_context = any(m in text_lower for m in _NEGATIVE_CONTEXT)
+    has_sarcasm_emoji = any(e in text for e in _SARCASM_EMOJIS)
+    has_moderate_emoji = any(e in text for e in _MODERATE_SARCASM_EMOJIS)
+    has_ironic = any(re.search(p, text_lower) for p in _IRONIC_PATTERNS)
+
+    sarcasm_score = 0.0
+    if has_pos_word and has_neg_context:
+        sarcasm_score += 0.4
+    if has_sarcasm_emoji:
+        sarcasm_score += 0.3
+    elif has_moderate_emoji and has_pos_word:
+        sarcasm_score += 0.2
+    if has_ironic:
+        sarcasm_score += 0.25
+
+    # Flip positive → negative if sarcasm detected
+    if sarcasm_score >= 0.35 and label == "positive":
+        return SentimentResponse(label="negative", score=round(max(score, sarcasm_score), 4))
+
+    # --- Churn detection: "ухожу", "перейду к конкурентам" → negative ---
+    if any(re.search(p, text_lower) for p in _CHURN_PATTERNS):
+        if label != "negative":
+            return SentimentResponse(label="negative", score=round(max(score, 0.65), 4))
+
+    # --- Emoji-only or emoji-dominant posts ---
+    text_no_space = text_lower.replace(" ", "")
+    if len(text_no_space) < 20:  # short post, emoji matters more
+        has_neg_emoji = any(e in text for e in _NEGATIVE_EMOJIS)
+        has_pos_emoji = any(e in text for e in _POSITIVE_EMOJIS)
+        if has_neg_emoji and not has_pos_emoji and label != "negative":
+            return SentimentResponse(label="negative", score=round(max(score, 0.60), 4))
+        if has_pos_emoji and not has_neg_emoji and label != "positive":
+            return SentimentResponse(label="positive", score=round(max(score, 0.60), 4))
+
+    return sentiment
 
 
 # ─── Risk Classification ─────────────────────────────────────────────
