@@ -27,10 +27,10 @@ log = logging.getLogger(__name__)
 
 # ─── Config ───────────────────────────────────────────────────────────
 
-# Fine-tuned on 188K Russian social media mentions (F1-macro: 0.758)
-# Downloads from HuggingFace Hub on first startup
-SENTIMENT_MODEL = "Daniil125/prodradar-sentiment-ru"
-SENTIMENT_MODEL_FALLBACK = "cointegrated/rubert-tiny2-cedr-emotion-detection"
+# Phase 1: ruRoBERTa-large fine-tuned on 318K samples (F1-macro: 0.868)
+# Falls back to HuggingFace model if local not found
+SENTIMENT_MODEL = "models/phase1-ruroberta/final"
+SENTIMENT_MODEL_FALLBACK = "Daniil125/prodradar-sentiment-ru"
 
 # Embeddings: sentence-transformers model for Russian, outputs 768-dim vectors
 EMBEDDING_MODEL = "cointegrated/LaBSE-en-ru"
@@ -97,11 +97,13 @@ class ModelManager:
         log.info(f"Loading models on device={DEVICE}...")
         t0 = time.time()
 
-        # Sentiment pipeline — downloads from HuggingFace on first run
-        log.info(f"Loading sentiment model: {SENTIMENT_MODEL}")
+        # Sentiment pipeline — local Phase 1 model or HuggingFace fallback
+        import os
+        model_path = SENTIMENT_MODEL if os.path.isdir(SENTIMENT_MODEL) else SENTIMENT_MODEL_FALLBACK
+        log.info(f"Loading sentiment model: {model_path}")
         self.sentiment_pipe = pipeline(
             "text-classification",
-            model=SENTIMENT_MODEL,
+            model=model_path,
             device=0 if DEVICE == "cuda" else -1,
             truncation=True,
             max_length=512,
