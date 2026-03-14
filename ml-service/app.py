@@ -185,31 +185,23 @@ _LABEL_MAP = {
 
 
 def _map_sentiment(raw_results: list[dict]) -> SentimentResponse:
-    """Map model output to standard sentiment label with confidence."""
+    """Map model output to standard sentiment label with confidence.
+
+    The fine-tuned model uses sigmoid (multi-label) outputs, not softmax.
+    We pick the highest-scoring label and use its raw score as confidence.
+    """
     if not raw_results:
         return SentimentResponse(label="neutral", score=0.5)
 
-    # Aggregate scores by our standard labels
-    scores = {"positive": 0.0, "negative": 0.0, "neutral": 0.0}
+    # Aggregate raw scores by our standard labels (take max per label)
+    scores: dict[str, float] = {"positive": 0.0, "negative": 0.0, "neutral": 0.0}
     for item in raw_results:
         mapped = _LABEL_MAP.get(item["label"], "neutral")
-        scores[mapped] += item["score"]
+        scores[mapped] = max(scores[mapped], item["score"])
 
-    # Normalize
-    total = sum(scores.values())
-    if total > 0:
-        scores = {k: v / total for k, v in scores.items()}
-
-    # Pick the dominant label
+    # Pick the dominant label by raw score
     best_label = max(scores, key=lambda k: scores[k])
     best_score = scores[best_label]
-
-    # If two labels are close, call it "mixed"
-    sorted_scores = sorted(scores.values(), reverse=True)
-    if len(sorted_scores) >= 2 and sorted_scores[0] - sorted_scores[1] < 0.15:
-        if best_label != "neutral":
-            best_label = "mixed"
-            best_score = sorted_scores[0]
 
     return SentimentResponse(label=best_label, score=round(best_score, 4))
 
