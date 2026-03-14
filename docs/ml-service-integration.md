@@ -259,6 +259,36 @@ async function classifyRisk(text: string, riskWords: string[]) {
 
 ---
 
+---
+
+## Combined Endpoint (for BrandRadar Enricher)
+
+### `POST /analyze`
+
+Single call that returns sentiment + embedding together. This is what the enricher service calls.
+
+```bash
+curl -X POST http://84.252.140.233:8000/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Против компании подан судебный иск"}'
+```
+
+```json
+// Request
+{ "text": "string" }
+
+// Response
+{
+  "sentiment_label": "negative",
+  "sentiment_score": 0.91,
+  "embedding": [0.012, -0.034, ..., 0.051]  // 768 floats
+}
+```
+
+**Enricher env var:** `ML_SERVICE_URL=http://84.252.140.233:8000`
+
+---
+
 ## Docker Compose Health Check
 
 ```yaml

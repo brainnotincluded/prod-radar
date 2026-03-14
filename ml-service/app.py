@@ -340,6 +340,30 @@ def risk(req: RiskRequest):
     return classify_risk(req.text, req.risk_words, models)
 
 
+# ─── Combined endpoint for BrandRadar enricher ───────────────────────
+
+class AnalyzeRequest(BaseModel):
+    text: str
+
+class AnalyzeResponse(BaseModel):
+    sentiment_label: str
+    sentiment_score: float
+    embedding: list[float]
+
+@app.post("/analyze", response_model=AnalyzeResponse)
+def analyze(req: AnalyzeRequest):
+    """Combined sentiment + embedding in one call (used by enricher service)."""
+    if not models.ready:
+        raise HTTPException(503, "Models not loaded yet")
+    sentiment = models.predict_sentiment(req.text)
+    emb = models.embed(req.text)
+    return AnalyzeResponse(
+        sentiment_label=sentiment.label,
+        sentiment_score=sentiment.score,
+        embedding=emb,
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
