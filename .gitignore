@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Data (too large for git)
+*.xlsx
+ml-service/gen/
+ml-service/data/
+ml-service/data_*.json
+
+# OS
+.DS_Store
+
+# Keys
+*.pem
+
+# Kimi exports
+kimi-export-*.md
+
+# IDE
+.superpowers/
