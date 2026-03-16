@@ -361,6 +361,40 @@ def main():
         log.warning(f"Dropping {len(invalid)} rows with invalid labels")
         all_rows = [r for r in all_rows if r["label"] in valid_labels]
 
+    # Resample to target class balance: 40% neutral, 30% positive, 30% negative
+    # This compensates for external datasets diluting the neutral class
+    import random
+    random.seed(SEED)
+    by_label: dict[int, list[dict]] = {0: [], 1: [], 2: []}
+    for r in all_rows:
+        by_label[r["label"]].append(r)
+
+    # Use the smallest of (pos, neg) as reference, then scale neutral up
+    n_pos = len(by_label[0])
+    n_neg = len(by_label[1])
+    n_neu = len(by_label[2])
+    log.info(f"\nBefore resampling: pos={n_pos}, neg={n_neg}, neu={n_neu}")
+
+    # Target: neutral = 40%, pos = 30%, neg = 30%
+    # Keep all neutral (it's underrepresented), downsample pos/neg
+    target_neu = n_neu  # keep all neutral samples
+    target_pos = int(target_neu * 0.75)  # 30/40 ratio
+    target_neg = int(target_neu * 0.75)
+
+    # Don't upsample — only downsample overrepresented classes
+    target_pos = min(target_pos, n_pos)
+    target_neg = min(target_neg, n_neg)
+
+    resampled = []
+    resampled.extend(by_label[2])  # all neutral
+    resampled.extend(random.sample(by_label[0], target_pos))
+    resampled.extend(random.sample(by_label[1], target_neg))
+    random.shuffle(resampled)
+    all_rows = resampled
+
+    log.info(f"After resampling: pos={target_pos}, neg={target_neg}, neu={target_neu}")
+    print_stats(all_rows, "RESAMPLED DATASET")
+
     # Stratified split: 85% train, 7.5% val, 7.5% test
     labels = [r["label"] for r in all_rows]
 

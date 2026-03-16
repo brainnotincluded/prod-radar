@@ -119,17 +119,63 @@ class ModelManager:
         self.ready = True
         log.info(f"All models loaded in {time.time() - t0:.1f}s")
 
-    def predict_sentiment(self, text: str) -> SentimentResponse:
+    def _classify_single(self, text: str) -> SentimentResponse:
+        """Classify a single text chunk (no sentence splitting)."""
         result = self.sentiment_pipe(text, top_k=None)
-        sentiment = _map_sentiment(result)
-        return _postprocess_sentiment(text, sentiment)
+        return _map_sentiment(result)
+
+    def predict_sentiment(self, text: str) -> SentimentResponse:
+        """Sentence-level aggregation for long texts + post-processing."""
+        sentences = _split_sentences(text)
+
+        # Short text — classify directly
+        if len(sentences) <= 1 or len(text) < 300:
+            raw = self._classify_single(text)
+            return _postprocess_sentiment(text, raw)
+
+        # Classify each sentence
+        results = self.sentiment_pipe(
+            sentences, top_k=None, batch_size=32
+        )
+        sentiments = [_map_sentiment(r) for r in results]
+
+        # Accumulate emotional signals only (ignore neutral completely)
+        n = len(sentiments)
+        pos_total = 0.0
+        neg_total = 0.0
+        pos_count = 0
+        neg_count = 0
+        for s in sentiments:
+            if s.label == "positive":
+                pos_total += s.score
+                pos_count += 1
+            elif s.label == "negative":
+                neg_total += s.score
+                neg_count += 1
+
+        emotional_count = pos_count + neg_count
+        emotional_ratio = emotional_count / n if n > 0 else 0
+
+        # Need at least 15% emotional sentences to color the whole text
+        if emotional_ratio >= 0.15 and (pos_total > 0 or neg_total > 0):
+            if neg_total > pos_total:
+                best_label = "negative"
+                best_score = neg_total / (neg_total + pos_total)
+            elif pos_total > neg_total:
+                best_label = "positive"
+                best_score = pos_total / (neg_total + pos_total)
+            else:
+                best_label = "neutral"
+                best_score = 0.5
+        else:
+            best_label = "neutral"
+            best_score = 0.8
+
+        raw = SentimentResponse(label=best_label, score=round(best_score, 4))
+        return _postprocess_sentiment(text, raw)
 
     def predict_sentiment_batch(self, texts: list[str]) -> list[SentimentResponse]:
-        results = self.sentiment_pipe(texts, top_k=None, batch_size=32)
-        return [
-            _postprocess_sentiment(text, _map_sentiment(r))
-            for text, r in zip(texts, results)
-        ]
+        return [self.predict_sentiment(t) for t in texts]
 
     def embed(self, text: str) -> list[float]:
         return self.embed_batch([text])[0]
@@ -192,7 +238,8 @@ def _map_sentiment(raw_results: list[dict]) -> SentimentResponse:
     """Map model output to standard sentiment label with confidence.
 
     The fine-tuned model uses sigmoid (multi-label) outputs, not softmax.
-    We pick the highest-scoring label and use its raw score as confidence.
+    We pick the highest-scoring label, with a neutral-bias margin to compensate
+    for the model's underrepresentation of neutral in training data (16.5%).
     """
     if not raw_results:
         return SentimentResponse(label="neutral", score=0.5)
@@ -443,6 +490,120 @@ def analyze(req: AnalyzeRequest):
         sentiment_label=sentiment.label,
         sentiment_score=sentiment.score,
         embedding=emb,
+    )
+
+
+# ─── Detailed sentence-level analysis (Perplexity-style) ─────────────
+
+def _split_sentences(text: str) -> list[str]:
+    """Split Russian text into sentences."""
+    # Handle common abbreviations to avoid false splits
+    text = re.sub(r'(\d)\.\s*(\d)', r'\1[DOT]\2', text)  # decimals
+    for abbr in ["г.", "гг.", "т.д.", "т.п.", "т.е.", "др.", "пр.", "руб.", "коп.",
+                  "млн.", "млрд.", "трлн.", "тыс.", "ул.", "д.", "стр.", "корп."]:
+        text = text.replace(abbr, abbr.replace(".", "[DOT]"))
+
+    # Split on sentence-ending punctuation
+    parts = re.split(r'(?<=[.!?])\s+', text)
+
+    # Restore dots
+    sentences = []
+    for p in parts:
+        p = p.replace("[DOT]", ".").strip()
+        if len(p) > 5:
+            sentences.append(p)
+    return sentences if sentences else [text]
+
+
+class SentenceAnalysis(BaseModel):
+    text: str
+    label: str
+    score: float
+    index: int
+
+
+class DetailedAnalyzeRequest(BaseModel):
+    text: str
+    risk_words: list[str] = []
+
+
+class DetailedAnalyzeResponse(BaseModel):
+    # Overall
+    sentiment_label: str
+    sentiment_score: float
+    embedding: list[float]
+    # Per-sentence breakdown
+    sentences: list[SentenceAnalysis]
+    # Summary stats
+    sentence_count: int
+    positive_count: int
+    negative_count: int
+    neutral_count: int
+    # Risk
+    risk_detected: bool = False
+    risk_words_matched: list[str] = []
+    # Highlights — most positive and most negative sentences
+    most_positive: SentenceAnalysis | None = None
+    most_negative: SentenceAnalysis | None = None
+
+
+@app.post("/analyze/detailed", response_model=DetailedAnalyzeResponse)
+def analyze_detailed(req: DetailedAnalyzeRequest):
+    """Perplexity-style detailed analysis: overall + per-sentence sentiment."""
+    if not models.ready:
+        raise HTTPException(503, "Models not loaded yet")
+
+    # Overall sentiment + embedding
+    overall = models.predict_sentiment(req.text)
+    emb = models.embed(req.text)
+
+    # Split into sentences and classify each
+    raw_sentences = _split_sentences(req.text)
+    sentence_sentiments = models.predict_sentiment_batch(raw_sentences)
+
+    sentences = []
+    pos_count = neg_count = neu_count = 0
+    most_pos = most_neg = None
+
+    for i, (sent_text, sent_result) in enumerate(zip(raw_sentences, sentence_sentiments)):
+        sa = SentenceAnalysis(
+            text=sent_text,
+            label=sent_result.label,
+            score=sent_result.score,
+            index=i,
+        )
+        sentences.append(sa)
+
+        if sent_result.label == "positive":
+            pos_count += 1
+            if most_pos is None or sent_result.score > most_pos.score:
+                most_pos = sa
+        elif sent_result.label == "negative":
+            neg_count += 1
+            if most_neg is None or sent_result.score > most_neg.score:
+                most_neg = sa
+        else:
+            neu_count += 1
+
+    # Risk detection
+    risk_matched = []
+    if req.risk_words:
+        text_lower = req.text.lower()
+        risk_matched = [w for w in req.risk_words if w.lower() in text_lower]
+
+    return DetailedAnalyzeResponse(
+        sentiment_label=overall.label,
+        sentiment_score=overall.score,
+        embedding=emb,
+        sentences=sentences,
+        sentence_count=len(sentences),
+        positive_count=pos_count,
+        negative_count=neg_count,
+        neutral_count=neu_count,
+        risk_detected=len(risk_matched) > 0,
+        risk_words_matched=risk_matched,
+        most_positive=most_pos,
+        most_negative=most_neg,
     )
 
 

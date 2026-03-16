@@ -1,0 +1,50 @@
+# Prod Radar ML Service v2 — Multi-task model (sentiment + relevance + similarity)
+# CPU-only build for deployment
+#
+# Build:
+#   docker build -f Dockerfile.v2 -t prodradar-ml:v2 .
+#
+# Run:
+#   docker run -p 8000:8000 -v hf_cache:/root/.cache/huggingface prodradar-ml:v2
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System dependencies (build-essential for numpy/torch wheels, curl for healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# HuggingFace cache — LaBSE downloads on first start
+ENV TRANSFORMERS_CACHE=/root/.cache/huggingface
+ENV HF_HOME=/root/.cache/huggingface
+
+# Install PyTorch CPU-only first (smaller image, no CUDA bloat)
+COPY requirements_v2.txt .
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements_v2.txt
+
+# Copy application code (app_v2.py deployed as app.py)
+COPY app_v2.py ./app.py
+
+# Copy the multi-task model artifacts
+#   model.pt          — full state_dict (encoder + 3 heads)
+#   model_config.json — architecture config for reconstruction
+#   tokenizer/        — rubert-tiny2 tokenizer files
+COPY models/multitask-final/model.pt ./models/multitask-final/model.pt
+COPY models/multitask-final/model_config.json ./models/multitask-final/model_config.json
+COPY models/multitask-final/tokenizer/ ./models/multitask-final/tokenizer/
+
+# LaBSE embedding model (768-dim) downloads from HuggingFace on first start.
+# Mount a volume at /root/.cache/huggingface to persist across restarts.
+VOLUME /root/.cache/huggingface
+
+EXPOSE 8000
+
+# Healthcheck: wait up to 120s for model loading, then check every 30s
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
