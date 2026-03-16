@@ -477,18 +477,33 @@ class AnalyzeRequest(BaseModel):
 class AnalyzeResponse(BaseModel):
     sentiment_label: str
     sentiment_score: float
+    relevance_score: float = 0.0
+    similarity_score: float = 0.0
     embedding: list[float]
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze(req: AnalyzeRequest):
-    """Combined sentiment + embedding in one call (used by enricher service)."""
+    """Combined sentiment + relevance + similarity + embedding (used by enricher)."""
     if not models.ready:
         raise HTTPException(503, "Models not loaded yet")
     sentiment = models.predict_sentiment(req.text)
     emb = models.embed(req.text)
+
+    # Relevance: based on sentiment confidence (higher confidence = more relevant)
+    # Texts with strong sentiment (pos or neg) are more relevant than neutral
+    if sentiment.label in ("positive", "negative"):
+        relevance = min(sentiment.score * 1.2, 1.0)
+    else:
+        relevance = max(0.3, sentiment.score * 0.5)
+
+    # Similarity: placeholder (real dedup is done via embedding cosine distance in enricher)
+    similarity = 0.0
+
     return AnalyzeResponse(
         sentiment_label=sentiment.label,
         sentiment_score=sentiment.score,
+        relevance_score=round(relevance, 4),
+        similarity_score=round(similarity, 4),
         embedding=emb,
     )
 
